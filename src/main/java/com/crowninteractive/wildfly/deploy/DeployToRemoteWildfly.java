@@ -5,15 +5,14 @@
  */
 package com.crowninteractive.wildfly.deploy;
 
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
-import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -27,87 +26,68 @@ import org.apache.maven.plugins.annotations.Parameter;
 @Mojo(name = "deployRemote", requiresProject = false)
 public class DeployToRemoteWildfly extends AbstractMojo {
 
-  
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}")
     private File projectTargetPath;
-    
+
     @Parameter
     private String host;
     @Parameter
     private String user;
-    @Parameter 
+    @Parameter(defaultValue = "22")
+    private int port;
+    @Parameter
     private String password;
     @Parameter
     private String remoteFilepath;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-      
+
         StringBuilder sb1 = new StringBuilder();
         String buildFile = sb1.append(projectTargetPath.getPath()).append(".war").toString();
-        
-        File file = new File(buildFile);
-        if (!file.exists())
-            throw new RuntimeException("Error. Local file not found");
 
-        StandardFileSystemManager manager = new StandardFileSystemManager();
+        File file = new File(buildFile);
+        if (!file.exists()) {
+            throw new RuntimeException("Error. Local file not found");
+        }
+
+        Session session = null;
+        Channel channel = null;
+        ChannelSftp channelSftp = null;
+
+        Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "preparing the host information for sftp.");
 
         try {
-            manager.init();
+            JSch jsch = new JSch();
+            session = jsch.getSession(user, host, port);
+            session.setPassword(password);
+            java.util.Properties config = new java.util.Properties();
+            config.put("StrictHostKeyChecking", "no");
+            session.setConfig(config);
+            session.connect();
 
-            // Create local file object
-            FileObject localFile = manager.resolveFile(file.getAbsolutePath());
+            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Host connected.");
 
-            // Create remote file object
-            FileObject remoteFile = manager.resolveFile(createConnectionString(host, user, password, remoteFilepath), createDefaultOptions());
-            /*
-             * use createDefaultOptions() in place of fsOptions for all default
-             * options - Ashok.
-             */
-
-            // Copy local file to sftp server
-            remoteFile.copyFrom(localFile, Selectors.SELECT_SELF);
-
-           Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, " >>> Deploying to your Remote Wildfly >>>> ");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            channel = session.openChannel("sftp");
+            channel.connect();
+            Logger.getLogger(DeployToWildfly.class.getName()).log(Level.INFO, "sftp channel opened and connected.");
+            channelSftp = (ChannelSftp) channel;
+            channelSftp.cd(remoteFilepath);
+            File f = new File(buildFile);
+            channelSftp.put(new FileInputStream(f), f.getName());
+            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "File transfered successfully to host >>>>>>>>>>>>.");
+        } catch (Exception ex) {
+            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Exception found while tranfer the response.");
         } finally {
-            manager.close();
+
+            channelSftp.exit();
+            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "sftp Channel exited.");
+            channel.disconnect();
+            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Channel disconnected.");
+            session.disconnect();
+            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Host Session disconnected.");
         }
-    
-    
+
     }
 
-    public static String createConnectionString(String hostName, String username, String password, String remoteFilePath) {
-        return "sftp://" + username + ":" + password + "@" + hostName + "/" + remoteFilePath;
-    }
-
-    /**
-     * Method to setup default SFTP config
-     * 
-     * @return the FileSystemOptions object containing the specified
-     *         configuration options
-     * @throws FileSystemException
-     */
-    public static FileSystemOptions createDefaultOptions() throws FileSystemException {
-        // Create SFTP options
-        FileSystemOptions opts = new FileSystemOptions();
-
-        // SSH Key checking
-        SftpFileSystemConfigBuilder.getInstance().setStrictHostKeyChecking(opts, "no");
-
-        /*
-         * Using the following line will cause VFS to choose File System's Root
-         * as VFS's root. If I wanted to use User's home as VFS's root then set
-         * 2nd method parameter to "true"
-         */
-        // Root directory set to user home
-        SftpFileSystemConfigBuilder.getInstance().setUserDirIsRoot(opts, false);
-
-        // Timeout is count by Milliseconds
-        SftpFileSystemConfigBuilder.getInstance().setTimeout(opts, 10000);
-
-        return opts;
-    }
-    
 }
