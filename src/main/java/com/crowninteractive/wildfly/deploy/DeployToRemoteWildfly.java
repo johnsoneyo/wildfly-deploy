@@ -8,9 +8,12 @@ package com.crowninteractive.wildfly.deploy;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.maven.plugin.AbstractMojo;
@@ -46,16 +49,11 @@ public class DeployToRemoteWildfly extends AbstractMojo {
         StringBuilder sb1 = new StringBuilder();
         String buildFile = sb1.append(projectTargetPath.getPath()).append(".war").toString();
 
-        File file = new File(buildFile);
-        if (!file.exists()) {
-            throw new RuntimeException("Error. Local file not found");
-        }
-
         Session session = null;
         Channel channel = null;
         ChannelSftp channelSftp = null;
 
-        Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "preparing the host information for sftp.");
+        getLog().info("rasco the host information for sftp.");
 
         try {
             JSch jsch = new JSch();
@@ -66,26 +64,32 @@ public class DeployToRemoteWildfly extends AbstractMojo {
             session.setConfig(config);
             session.connect();
 
-            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Host connected.");
+            getLog().info("Host connected.");
 
             channel = session.openChannel("sftp");
             channel.connect();
-            Logger.getLogger(DeployToWildfly.class.getName()).log(Level.INFO, "sftp channel opened and connected.");
+            getLog().info("sftp channel opened and connected.");
             channelSftp = (ChannelSftp) channel;
             channelSftp.cd(remoteFilepath);
             File f = new File(buildFile);
             channelSftp.put(new FileInputStream(f), f.getName());
-            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "File transfered successfully to host >>>>>>>>>>>>.");
-        } catch (Exception ex) {
-            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Exception found while tranfer the response.");
-        } finally {
+            getLog().info("File transfered successfully to host >>>>>>>>>>>>.");
 
-            channelSftp.exit();
-            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "sftp Channel exited.");
-            channel.disconnect();
-            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Channel disconnected.");
-            session.disconnect();
-            Logger.getLogger(DeployToRemoteWildfly.class.getName()).log(Level.INFO, "Host Session disconnected.");
+        } catch (JSchException | SftpException | FileNotFoundException ex) {
+            getLog().info("Exception found while tranfer the response.");
+        } finally {
+            if (channelSftp != null) {
+                channelSftp.exit();
+            }
+            getLog().info("sftp Channel exited.");
+            if (channel != null) {
+                channel.disconnect();
+            }
+            getLog().info("Channel disconnected.");
+            if (session != null) {
+                session.disconnect();
+            }
+            getLog().info("Host Session disconnected.");
         }
 
     }

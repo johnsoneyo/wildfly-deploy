@@ -31,16 +31,16 @@ public class DeployToWildfly extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        
+
         StringBuilder sb1 = new StringBuilder();
         StringBuilder sb2 = new StringBuilder();
         String buildFile = sb1.append(projectTargetPath.getPath()).append(".war").toString();
         String deploymentPath = sb2.append(wildflyHome.getPath()).append("/standalone/deployments").toString();
-        File destFile  = new File(buildFile);
+        File destFile = new File(buildFile);
         File destPath = new File(deploymentPath);
-        
+
         try {
-            Logger.getLogger(DeployToWildfly.class.getName()).log(Level.INFO, " >>> Deploying to your local Wildfly >>> ");
+            getLog().info(" >>> Deploying to your local Wildfly >>> ");
             FileUtils.copyFileToDirectory(destFile, destPath);
         } catch (IOException ex) {
             Logger.getLogger(DeployToWildfly.class.getName()).log(Level.SEVERE, null, ex);
