@@ -21,3 +21,26 @@
                     </execution>
                 </executions>
             </plugin>
+
+# Deploy Remote 
+
+       <plugin>
+                <groupId>com.crowninteractive</groupId>
+                <artifactId>wildfly_deploy-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <user>root</user>
+                    <password>int3ractiv3</password>
+                    <remoteFilepath>/opt/wildfly/standalone/deployments</remoteFilepath>
+                    <host>81.26.67.111</host>
+                    <projectTargetPath>${project.build.directory}/${project.build.finalName}</projectTargetPath>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>deployRemote</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
