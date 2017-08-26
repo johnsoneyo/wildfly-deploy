@@ -14,8 +14,6 @@ import com.jcraft.jsch.SftpException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -76,7 +74,7 @@ public class DeployToRemoteWildfly extends AbstractMojo {
             getLog().info("File transfered successfully to host >>>>>>>>>>>>.");
 
         } catch (JSchException | SftpException | FileNotFoundException ex) {
-            getLog().info("Exception found while tranfer the response.");
+            getLog().error("Exception found while tranfer the response.",ex);
         } finally {
             if (channelSftp != null) {
                 channelSftp.exit();

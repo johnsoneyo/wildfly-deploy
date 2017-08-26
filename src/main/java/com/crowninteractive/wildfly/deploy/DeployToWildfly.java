@@ -43,7 +43,7 @@ public class DeployToWildfly extends AbstractMojo {
             getLog().info(" >>> Deploying to your local Wildfly >>> ");
             FileUtils.copyFileToDirectory(destFile, destPath);
         } catch (IOException ex) {
-            Logger.getLogger(DeployToWildfly.class.getName()).log(Level.SEVERE, null, ex);
+            getLog().error(ex);
         }
     }
 
